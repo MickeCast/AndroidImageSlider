@@ -1,14 +1,14 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 26
-    buildToolsVersion "26.0.1"
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
 
     defaultConfig {
-        minSdkVersion 19
-        targetSdkVersion 26
-        versionCode 15
-        versionName "1.2.1"
+        minSdkVersion 17
+        targetSdkVersion 28
+        versionCode 16
+        versionName "1.2.2"
     }
     buildTypes {
         release {
@@ -22,10 +22,10 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:26.0.1'
-    implementation "com.android.support:support-v4:26.0.1"
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'com.squareup.picasso:picasso:2.71828'
-    implementation 'com.android.support:exifinterface:26.0.1'
-    implementation 'com.android.support:animated-vector-drawable:26.0.1'
+    implementation 'androidx.exifinterface:exifinterface:1.0.0'
+    implementation 'androidx.vectordrawable:vectordrawable-animated:1.1.0'
 }
 apply from: './gradle-mvn-push.gradle'
