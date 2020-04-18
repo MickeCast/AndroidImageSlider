@@ -605,13 +605,15 @@ public class SliderLayout extends RelativeLayout{
      * get the current item position
      * @return
      */
-    public int getCurrentPosition(){
+    public int getCurrentPosition() {
 
-        if(getRealAdapter() == null)
+        if (getRealAdapter() == null)
             throw new IllegalStateException("You did not set a slider adapter");
-
-        return mViewPager.getCurrentItem() % getRealAdapter().getCount();
-
+        try {
+            return mViewPager.getCurrentItem() % getRealAdapter().getCount();
+        } catch (Exception ex) {
+            return 0;
+        }
     }
 
     /**
@@ -624,8 +626,13 @@ public class SliderLayout extends RelativeLayout{
             throw new IllegalStateException("You did not set a slider adapter");
 
         int count = getRealAdapter().getCount();
-        int realCount = mViewPager.getCurrentItem() % count;
-        return  getRealAdapter().getSliderView(realCount);
+        int realCount = 0;
+        try {
+            realCount = mViewPager.getCurrentItem() % count;
+        } catch (Exception ex) {
+            //preventing divide by zero
+        }
+        return getRealAdapter().getSliderView(realCount);
     }
 
     /**
