@@ -10,6 +10,9 @@
 
         <attr name="auto_cycle" format="boolean"/>
 
+        <!-- false forbids paging by finger; programmatic moves still work -->
+        <attr name="swipe_enabled" format="boolean"/>
+
         <!-- page animation -->
         <attr name="pager_animation" format="enum">
             <enum name="Default" value="0">Default</enum>

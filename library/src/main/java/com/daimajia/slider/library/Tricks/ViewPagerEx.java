@@ -138,6 +138,13 @@ public class ViewPagerEx extends ViewGroup{
     private Scroller mScroller;
     private PagerObserver mObserver;
 
+    /**
+     * When false the pager ignores drags from the user. Programmatic moves
+     * ({@link #setCurrentItem(int)}) are unaffected, and taps still reach the children -- only
+     * paging by finger is refused. See SliderLayout#setSwipeEnabled.
+     */
+    private boolean mSwipeEnabled = true;
+
     private int mPageMargin;
     private Drawable mMarginDrawable;
     private int mTopPageBounds;
@@ -1793,8 +1800,34 @@ public class ViewPagerEx extends ViewGroup{
         }
     }
 
+    /** @see #mSwipeEnabled */
+    public void setSwipeEnabled(boolean enabled) {
+        mSwipeEnabled = enabled;
+        if (!enabled) {
+            // Drop any drag already in flight, or the pager stays stuck mid-page.
+            mIsBeingDragged = false;
+        }
+    }
+
+    public boolean isSwipeEnabled() {
+        return mSwipeEnabled;
+    }
+
+    /**
+     * Replaces the scroller that animates a page change; SliderLayout uses it to set the
+     * transition duration. It used to be assigned by reflection from there.
+     */
+    public void setScroller(Scroller scroller) {
+        if (scroller != null) {
+            mScroller = scroller;
+        }
+    }
+
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
+        if (!mSwipeEnabled) {
+            return false;
+        }
         /*
          * This method JUST determines whether we want to intercept the motion.
          * If we return true, onMotionEvent will be called and we do the actual
@@ -1939,6 +1972,9 @@ public class ViewPagerEx extends ViewGroup{
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
+        if (!mSwipeEnabled) {
+            return false;
+        }
         if (mFakeDragging) {
             // A fake drag is in progress already, ignore this real one
             // but still eat the touch events.

@@ -2,7 +2,13 @@ package com.daimajia.slider.library;
 
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.os.Message;
+import android.os.Handler;
+import android.os.Looper;
+
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleEventObserver;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.ViewTreeLifecycleOwner;
 import androidx.viewpager.widget.PagerAdapter;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -35,10 +41,6 @@ import com.daimajia.slider.library.Tricks.FixedSpeedScroller;
 import com.daimajia.slider.library.Tricks.InfinitePagerAdapter;
 import com.daimajia.slider.library.Tricks.InfiniteViewPager;
 import com.daimajia.slider.library.Tricks.ViewPagerEx;
-
-import java.lang.reflect.Field;
-import java.util.Timer;
-import java.util.TimerTask;
 
 /**
  * SliderLayout is compound layout. This is combined with {@link com.daimajia.slider.library.Indicators.PagerIndicator}
@@ -104,16 +106,38 @@ public class SliderLayout extends RelativeLayout{
 
 
     /**
-     * A timer and a TimerTask using to cycle the {@link com.daimajia.slider.library.Tricks.ViewPagerEx}.
+     * The auto cycle runs on the main thread's Handler rather than on a {@link java.util.Timer}.
+     * The Timer version started a thread per cycle, and every call to startAutoCycle() created
+     * another one; it also hopped back to the main thread through a Handler built with no Looper,
+     * which has been deprecated since API 30. Same behaviour, no threads.
      */
-    private Timer mCycleTimer;
-    private TimerTask mCycleTask;
+    private final Handler mCycleHandler = new Handler(Looper.getMainLooper());
+
+    private final Runnable mCycleRunnable = new Runnable() {
+        @Override
+        public void run() {
+            moveNextPosition(true);
+            mCycleHandler.postDelayed(this, mSliderDuration);
+        }
+    };
 
     /**
      * For resuming the cycle, after user touch or click the {@link com.daimajia.slider.library.Tricks.ViewPagerEx}.
      */
-    private Timer mResumingTimer;
-    private TimerTask mResumingTask;
+    private final Runnable mResumingRunnable = new Runnable() {
+        @Override
+        public void run() {
+            startAutoCycle();
+        }
+    };
+
+    /**
+     * Set while the cycle is suspended because the view left the window or its lifecycle owner
+     * stopped, so that coming back can tell "paused by the system" from "stopped by the caller".
+     */
+    private boolean mPausedBySystem;
+
+    private LifecycleOwner mObservedLifecycleOwner;
 
     /**
      * If {@link com.daimajia.slider.library.Tricks.ViewPagerEx} is Cycling
@@ -177,6 +201,7 @@ public class SliderLayout extends RelativeLayout{
         mTransformerSpan = attributes.getInteger(R.styleable.SliderLayout_pager_animation_span, 1100);
         mTransformerId = attributes.getInt(R.styleable.SliderLayout_pager_animation, Transformer.Default.ordinal());
         mAutoCycle = attributes.getBoolean(R.styleable.SliderLayout_auto_cycle,true);
+        boolean swipeEnabled = attributes.getBoolean(R.styleable.SliderLayout_swipe_enabled,true);
         int visibility = attributes.getInt(R.styleable.SliderLayout_indicator_visibility,0);
         for(PagerIndicator.IndicatorVisibility v: PagerIndicator.IndicatorVisibility.values()){
             if(v.ordinal() == visibility){
@@ -208,6 +233,7 @@ public class SliderLayout extends RelativeLayout{
         setPresetTransformer(mTransformerId);
         setSliderTransformDuration(mTransformerSpan,null);
         setIndicatorVisibility(mIndicatorVisibility);
+        setSwipeEnabled(swipeEnabled);
         if(mAutoCycle){
             startAutoCycle();
         }
@@ -237,14 +263,6 @@ public class SliderLayout extends RelativeLayout{
         mSliderAdapter.addSlider(imageContent);
     }
 
-    private android.os.Handler mh = new android.os.Handler(){
-        @Override
-        public void handleMessage(Message msg) {
-            super.handleMessage(msg);
-            moveNextPosition(true);
-        }
-    };
-
     public void startAutoCycle(){
         startAutoCycle(mSliderDuration, mSliderDuration, mAutoRecover);
     }
@@ -256,22 +274,14 @@ public class SliderLayout extends RelativeLayout{
      * @param autoRecover if recover after user touches the slider.
      */
     public void startAutoCycle(long delay,long duration,boolean autoRecover){
-        if(mCycleTimer != null) mCycleTimer.cancel();
-        if(mCycleTask != null) mCycleTask.cancel();
-        if(mResumingTask != null) mResumingTask.cancel();
-        if(mResumingTimer != null) mResumingTimer.cancel();
+        mCycleHandler.removeCallbacks(mCycleRunnable);
+        mCycleHandler.removeCallbacks(mResumingRunnable);
         mSliderDuration = duration;
-        mCycleTimer = new Timer();
         mAutoRecover = autoRecover;
-        mCycleTask = new TimerTask() {
-            @Override
-            public void run() {
-                mh.sendEmptyMessage(0);
-            }
-        };
-        mCycleTimer.schedule(mCycleTask,delay,mSliderDuration);
+        mCycleHandler.postDelayed(mCycleRunnable, delay);
         mCycling = true;
         mAutoCycle = true;
+        mPausedBySystem = false;
     }
 
     /**
@@ -279,13 +289,10 @@ public class SliderLayout extends RelativeLayout{
      */
     private void pauseAutoCycle(){
         if(mCycling){
-            mCycleTimer.cancel();
-            mCycleTask.cancel();
+            mCycleHandler.removeCallbacks(mCycleRunnable);
             mCycling = false;
         }else{
-            if(mResumingTimer != null && mResumingTask != null){
-                recoverCycle();
-            }
+            recoverCycle();
         }
     }
 
@@ -306,20 +313,20 @@ public class SliderLayout extends RelativeLayout{
      * stop the auto circle
      */
     public void stopAutoCycle(){
-        if(mCycleTask!=null){
-            mCycleTask.cancel();
-        }
-        if(mCycleTimer!= null){
-            mCycleTimer.cancel();
-        }
-        if(mResumingTimer!= null){
-            mResumingTimer.cancel();
-        }
-        if(mResumingTask!=null){
-            mResumingTask.cancel();
-        }
+        mCycleHandler.removeCallbacks(mCycleRunnable);
+        mCycleHandler.removeCallbacks(mResumingRunnable);
         mAutoCycle = false;
         mCycling = false;
+        // An explicit stop outranks the lifecycle: coming back to the screen must not restart a
+        // cycle the caller switched off.
+        mPausedBySystem = false;
+    }
+
+    /**
+     * @return true while the slider is advancing by itself.
+     */
+    public boolean isAutoCycling(){
+        return mCycling;
     }
 
     /**
@@ -331,22 +338,95 @@ public class SliderLayout extends RelativeLayout{
         }
 
         if(!mCycling){
-            if(mResumingTask != null && mResumingTimer!= null){
-                mResumingTimer.cancel();
-                mResumingTask.cancel();
-            }
-            mResumingTimer = new Timer();
-            mResumingTask = new TimerTask() {
-                @Override
-                public void run() {
-                    startAutoCycle();
-                }
-            };
-            mResumingTimer.schedule(mResumingTask, 6000);
+            mCycleHandler.removeCallbacks(mResumingRunnable);
+            mCycleHandler.postDelayed(mResumingRunnable, 6000);
         }
     }
 
+    /**
+     * Suspends the cycle without forgetting that the caller wanted one, so that
+     * {@link #resumeAutoCycleAfterSystemPause()} can put it back.
+     */
+    private void pauseAutoCycleForSystem(){
+        if(!mAutoCycle){
+            return;
+        }
+        mCycleHandler.removeCallbacks(mCycleRunnable);
+        mCycleHandler.removeCallbacks(mResumingRunnable);
+        mCycling = false;
+        mPausedBySystem = true;
+    }
 
+    private void resumeAutoCycleAfterSystemPause(){
+        if(mPausedBySystem && mAutoCycle && !mCycling){
+            startAutoCycle();
+        }
+    }
+
+    /**
+     * The auto cycle used to keep firing after the view left the window, which is why the caller
+     * had to remember to call {@link #stopAutoCycle()} before its activity went away. It now stops
+     * itself on detach, and on the owning lifecycle's ON_STOP when there is one
+     * ({@link ViewTreeLifecycleOwner}), and starts again on the way back. An explicit
+     * {@link #stopAutoCycle()} is still respected: only a cycle the system suspended is resumed.
+     */
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        observeLifecycle();
+        resumeAutoCycleAfterSystemPause();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        stopObservingLifecycle();
+        pauseAutoCycleForSystem();
+        super.onDetachedFromWindow();
+    }
+
+    private final LifecycleEventObserver mLifecycleObserver = new LifecycleEventObserver() {
+        @Override
+        public void onStateChanged(LifecycleOwner source, Lifecycle.Event event) {
+            if (event == Lifecycle.Event.ON_STOP) {
+                pauseAutoCycleForSystem();
+            } else if (event == Lifecycle.Event.ON_START) {
+                resumeAutoCycleAfterSystemPause();
+            } else if (event == Lifecycle.Event.ON_DESTROY) {
+                stopObservingLifecycle();
+            }
+        }
+    };
+
+    private void observeLifecycle() {
+        LifecycleOwner owner = ViewTreeLifecycleOwner.get(this);
+        if (owner == null || owner == mObservedLifecycleOwner) {
+            return;
+        }
+        stopObservingLifecycle();
+        mObservedLifecycleOwner = owner;
+        owner.getLifecycle().addObserver(mLifecycleObserver);
+    }
+
+    private void stopObservingLifecycle() {
+        if (mObservedLifecycleOwner != null) {
+            mObservedLifecycleOwner.getLifecycle().removeObserver(mLifecycleObserver);
+            mObservedLifecycleOwner = null;
+        }
+    }
+
+    /**
+     * Whether the user can page the slider with a finger. Programmatic moves
+     * ({@link #moveNextPosition()}, {@link #setCurrentPosition(int)}) keep working either way, so
+     * a caller that drives the slides itself -- from an audio track, say -- can forbid the stray
+     * drag that would otherwise fight it.
+     */
+    public void setSwipeEnabled(boolean enabled){
+        mViewPager.setSwipeEnabled(enabled);
+    }
+
+    public boolean isSwipeEnabled(){
+        return mViewPager.isSwipeEnabled();
+    }
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
@@ -378,14 +458,10 @@ public class SliderLayout extends RelativeLayout{
      * @param interpolator
      */
     public void setSliderTransformDuration(int period,Interpolator interpolator){
-        try{
-            Field mScroller = ViewPagerEx.class.getDeclaredField("mScroller");
-            mScroller.setAccessible(true);
-            FixedSpeedScroller scroller = new FixedSpeedScroller(mViewPager.getContext(),interpolator, period);
-            mScroller.set(mViewPager,scroller);
-        }catch (Exception e){
-
-        }
+        // ViewPagerEx is this library's own class, so its scroller is set directly. It used to be
+        // reached by reflection on a private field with an empty catch, which would have gone
+        // silently dead the day the field was renamed.
+        mViewPager.setScroller(new FixedSpeedScroller(mViewPager.getContext(), interpolator, period));
     }
 
     /**
@@ -539,12 +615,15 @@ public class SliderLayout extends RelativeLayout{
         mIndicator.setIndicatorVisibility(visibility);
     }
 
+    /**
+     * This used to be inside out: it dereferenced the indicator when it was null, and answered
+     * "Invisible" for every indicator that did exist, whatever had been set on it.
+     */
     public PagerIndicator.IndicatorVisibility getIndicatorVisibility(){
         if(mIndicator == null){
-            return mIndicator.getIndicatorVisibility();
+            return PagerIndicator.IndicatorVisibility.Invisible;
         }
-        return PagerIndicator.IndicatorVisibility.Invisible;
-
+        return mIndicator.getIndicatorVisibility();
     }
 
     /**

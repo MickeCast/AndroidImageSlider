@@ -296,6 +296,9 @@ public class PagerIndicator extends LinearLayout implements ViewPagerEx.OnPageCh
      * @param visibility
      */
     public void setIndicatorVisibility(IndicatorVisibility visibility){
+        // The field was never assigned here, so getIndicatorVisibility() went on reporting
+        // whatever the XML said when the indicator was inflated.
+        mVisibility = visibility;
         if(visibility == IndicatorVisibility.Visible){
             setVisibility(View.VISIBLE);
         }else{

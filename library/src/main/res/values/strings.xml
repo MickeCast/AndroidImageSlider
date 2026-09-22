@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Slider</string>
+    <string name="slider_image_description">Slide</string>
 </resources>

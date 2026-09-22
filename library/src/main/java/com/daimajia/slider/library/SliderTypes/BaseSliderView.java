@@ -1,6 +1,8 @@
 package com.daimajia.slider.library.SliderTypes;
 
 import android.content.Context;
+import android.graphics.Matrix;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -56,8 +58,17 @@ public abstract class BaseSliderView {
      */
     private ScaleType mScaleType = ScaleType.Fit;
 
+    /**
+     * How the picture is fitted into its ImageView.
+     * <p>
+     * {@code FitCenterCrop} was declared here from the beginning but never handled, so asking for
+     * it silently did nothing at all. It now means what its name says: fill the view and crop the
+     * overflow. {@code FitWidth} and {@code FitHeight} are new -- they match one axis exactly and
+     * let the other overflow, which is what a full-screen slide wants on a tall phone, where
+     * {@code CenterInside} leaves broad empty bands.
+     */
     public enum ScaleType{
-        CenterCrop, CenterInside, Fit, FitCenterCrop
+        CenterCrop, CenterInside, Fit, FitCenterCrop, FitWidth, FitHeight
     }
 
     protected BaseSliderView(Context context) {
@@ -244,11 +255,28 @@ public abstract class BaseSliderView {
             case CenterInside:
                 rq.fit().centerInside();
                 break;
+            case FitCenterCrop:
+                // Decode at view size, crop the overflow, and let the ImageView crop the same way
+                // if it is ever handed a differently shaped drawable.
+                rq.fit().centerCrop();
+                targetImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                break;
+            case FitWidth:
+            case FitHeight:
+                // No resize at all: the bitmap is decoded whole and the matrix does the fitting,
+                // because the axis that overflows must not be scaled down to the view.
+                applyAxisFit(targetImageView, mScaleType);
+                break;
         }
 
         rq.into(targetImageView,new Callback() {
             @Override
             public void onSuccess() {
+                // The listener used to hear about failures only: onEnd(true, ...) was never sent,
+                // so nothing could react to a picture actually arriving.
+                if(mLoadListener != null){
+                    mLoadListener.onEnd(true,me);
+                }
                 if(v.findViewById(R.id.loading_bar) != null){
                     v.findViewById(R.id.loading_bar).setVisibility(View.INVISIBLE);
                 }
@@ -282,6 +310,45 @@ public abstract class BaseSliderView {
    }
 
 
+
+    /**
+     * Fits the drawable to one axis of the view and centres the other, which may overflow and be
+     * clipped. The matrix is recomputed whenever the view is laid out or its drawable changes, so
+     * it survives rotation and a later image load.
+     */
+    private static void applyAxisFit(final ImageView target, final ScaleType type){
+        target.setScaleType(ImageView.ScaleType.MATRIX);
+        target.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int left, int top, int right, int bottom,
+                                       int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                updateAxisFitMatrix(target, type);
+            }
+        });
+        updateAxisFitMatrix(target, type);
+    }
+
+    private static void updateAxisFitMatrix(ImageView target, ScaleType type){
+        Drawable drawable = target.getDrawable();
+        if(drawable == null){
+            return;
+        }
+        int drawableWidth = drawable.getIntrinsicWidth();
+        int drawableHeight = drawable.getIntrinsicHeight();
+        int viewWidth = target.getWidth() - target.getPaddingLeft() - target.getPaddingRight();
+        int viewHeight = target.getHeight() - target.getPaddingTop() - target.getPaddingBottom();
+        if(drawableWidth <= 0 || drawableHeight <= 0 || viewWidth <= 0 || viewHeight <= 0){
+            return;
+        }
+        float scale = type == ScaleType.FitWidth
+                ? (float) viewWidth / drawableWidth
+                : (float) viewHeight / drawableHeight;
+        Matrix matrix = new Matrix();
+        matrix.setScale(scale, scale);
+        matrix.postTranslate((viewWidth - drawableWidth * scale) / 2f,
+                (viewHeight - drawableHeight * scale) / 2f);
+        target.setImageMatrix(matrix);
+    }
 
     public BaseSliderView setScaleType(ScaleType type){
         mScaleType = type;
