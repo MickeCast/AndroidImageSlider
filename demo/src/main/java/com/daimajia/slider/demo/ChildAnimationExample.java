@@ -1,9 +1,9 @@
 package com.daimajia.slider.demo;
 
+import android.animation.ObjectAnimator;
 import android.util.Log;
 import android.view.View;
 
-import com.daimajia.androidanimations.library.attention.StandUpAnimator;
 import com.daimajia.slider.library.Animations.BaseAnimationInterface;
 
 public class ChildAnimationExample implements BaseAnimationInterface {
@@ -43,8 +43,11 @@ public class ChildAnimationExample implements BaseAnimationInterface {
 //                    descriptionLayout, "y", -descriptionLayout.getHeight(),
 //                    0).setDuration(500);
 //            animator.start();
-//            new BounceInAnimator().animate(descriptionLayout);
-            new StandUpAnimator().animate(descriptionLayout);
+            // Was com.daimajia.androidanimations' StandUpAnimator. That artifact only ever lived
+            // on jcenter, which is gone, so the demo does the same thing with a plain animator.
+            ObjectAnimator.ofFloat(descriptionLayout, View.ROTATION_X, -90f, 0f)
+                    .setDuration(500)
+                    .start();
         }
         Log.e(TAG,"onCurrentItemDisappear called");
     }

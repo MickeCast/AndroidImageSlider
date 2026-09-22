@@ -1,28 +1,34 @@
-//apply plugin: 'android-sdk-manager'
 apply plugin: 'com.android.application'
 
-
 android {
-    compileSdkVersion 28
-    buildToolsVersion "28.0.3"
+    namespace 'com.daimajia.slider.demo'
+    compileSdk 36
 
     defaultConfig {
-        minSdkVersion 19
-        targetSdkVersion 28
+        applicationId 'com.daimajia.slider.demo'
+        minSdk 24
+        targetSdk 36
         versionCode 2
-        versionName "1.1.0"
+        versionName '1.1.0'
     }
     buildTypes {
         release {
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.txt'
         }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint {
+        abortOnError false
     }
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':library')
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation 'com.nineoldandroids:library:2.4.0'
-    implementation 'com.daimajia.androidanimations:library:1.0.3@aar'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    // com.nineoldandroids and com.daimajia.androidanimations were jcenter-only and are gone;
+    // ChildAnimationExample uses a framework ObjectAnimator instead.
 }

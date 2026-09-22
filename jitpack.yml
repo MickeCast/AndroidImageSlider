@@ -1,0 +1,4 @@
+# JitPack builds this repository on demand. AGP 8.x needs Java 17, and JitPack still
+# defaults to Java 8, so the JDK has to be named here or the build fails at configuration.
+jdk:
+  - openjdk17

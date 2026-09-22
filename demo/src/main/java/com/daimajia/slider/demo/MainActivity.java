@@ -101,21 +101,19 @@ public class MainActivity extends AppCompatActivity implements BaseSliderView.On
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()){
-            case R.id.action_custom_indicator:
-                mDemoSlider.setCustomIndicator((PagerIndicator) findViewById(R.id.custom_indicator));
-                break;
-            case R.id.action_custom_child_animation:
-                mDemoSlider.setCustomAnimation(new ChildAnimationExample());
-                break;
-            case R.id.action_restore_default:
-                mDemoSlider.setPresetIndicator(SliderLayout.PresetIndicators.Center_Bottom);
-                mDemoSlider.setCustomAnimation(new DescriptionAnimation());
-                break;
-            case R.id.action_github:
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/daimajia/AndroidImageSlider"));
-                startActivity(browserIntent);
-                break;
+        // An if/else chain, not a switch: resource ids stopped being compile-time constants in
+        // AGP 8, so "case R.id.x:" no longer compiles.
+        int id = item.getItemId();
+        if (id == R.id.action_custom_indicator) {
+            mDemoSlider.setCustomIndicator((PagerIndicator) findViewById(R.id.custom_indicator));
+        } else if (id == R.id.action_custom_child_animation) {
+            mDemoSlider.setCustomAnimation(new ChildAnimationExample());
+        } else if (id == R.id.action_restore_default) {
+            mDemoSlider.setPresetIndicator(SliderLayout.PresetIndicators.Center_Bottom);
+            mDemoSlider.setCustomAnimation(new DescriptionAnimation());
+        } else if (id == R.id.action_github) {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/MickeCast/AndroidImageSlider"));
+            startActivity(browserIntent);
         }
         return super.onOptionsItemSelected(item);
     }

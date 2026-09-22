@@ -1,5 +1,8 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.daimajia.slider.library">
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The package attribute moved to the namespace in library/build.gradle (AGP 8 rejects it here).
+     WRITE_EXTERNAL_STORAGE is gone: nothing in this library writes to storage, and a permission
+     declared here is merged into every app that consumes it. INTERNET stays, because the slider
+     loads remote images through Picasso. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 </manifest>
