@@ -1,4 +1,59 @@
-# Android Image Slider [![Build Status](https://travis-ci.org/daimajia/AndroidImageSlider.svg)](https://travis-ci.org/daimajia/AndroidImageSlider)
+# Android Image Slider
+
+> ### This is a maintained fork
+>
+> Upstream ([daimajia/AndroidImageSlider](https://github.com/daimajia/AndroidImageSlider)) stopped
+> in 2020, and this fork carries it forward for the apps that still use it. It is consumed through
+> JitPack; there is nothing to publish by hand.
+>
+> ```groovy
+> repositories { maven { url 'https://jitpack.io' } }
+>
+> dependencies {
+>     implementation 'com.github.MickeCast:AndroidImageSlider:1.3.0'
+> }
+> ```
+>
+> **Building it:** AGP 8.13.2 / Gradle 8.14.3 / **JDK 17**, `compileSdk` 36, `minSdk` 24. The JDK is
+> what `jitpack.yml` pins -- JitPack still defaults to Java 8, which cannot run AGP 8. The version
+> deliberately trails the apps that consume it: an AAR is version-independent of its consumers, and
+> JitPack's builders are the ceiling here.
+>
+> **Tests:** `./gradlew :library:connectedDebugAndroidTest` with a device attached. They are
+> instrumented because a slider without a window, a Looper and a real layout pass is not the thing
+> worth testing.
+>
+> ### What this fork changed
+>
+> **Fixed**
+> - `SliderLayout.getIndicatorVisibility()` dereferenced a null indicator, and reported `Invisible`
+>   for every indicator that existed, whatever had been set on it.
+> - `PagerIndicator.setIndicatorVisibility()` never stored the value, so the getter answered
+>   whatever the XML said at inflation.
+> - A successful image load told nobody: `ImageLoadListener.onEnd(true, ...)` was never called.
+> - `ScaleType.FitCenterCrop` was in the enum but missing from the switch, so asking for it did
+>   nothing at all.
+> - The auto cycle ran on a `Timer` thread per cycle and hopped back through a `Handler` built with
+>   no `Looper` (deprecated since API 30). It is one main-thread `Handler` now.
+> - `setSliderTransformDuration()` set the scroller by reflection on a private field, with an empty
+>   catch; `ViewPagerEx` exposes it properly now.
+> - The library manifest forced `WRITE_EXTERNAL_STORAGE` on every app that depended on it. Nothing
+>   here writes to storage.
+> - jcenter is gone from the build, the `maven` plugin is replaced by `maven-publish`, and the demo
+>   no longer needs two artifacts that died with jcenter.
+>
+> **Added**
+> - `SliderLayout.setSwipeEnabled(boolean)` (and the `swipe_enabled` XML attribute): forbid paging
+>   by finger while still moving the slides from code.
+> - The auto cycle stops when the view leaves the window or its lifecycle owner stops, and comes
+>   back with it. An explicit `stopAutoCycle()` still wins.
+> - `ZoomableSliderView`: pinch-to-zoom slides, with PhotoView as a `compileOnly` dependency, so
+>   only the apps that use that class need to declare it.
+> - `ScaleType.FitWidth` and `ScaleType.FitHeight`, for full-screen pictures on tall screens where
+>   `CenterInside` leaves broad empty bands.
+> - `SliderLayout.isAutoCycling()`.
+
+---
 
 [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/daimajia/AndroidImageSlider?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
  
