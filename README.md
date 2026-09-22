@@ -76,6 +76,30 @@
 >   the pre-draw listener has to be registered on attach.
 > - `PhotoView.setScale(scale)` zooms about the **centre** of the view. Showing the top needs the
 >   focal-point form, `setScale(scale, x, 0, false)`.
+>
+> ### 1.5.0 -- a whole page at once, and two pager bugs
+>
+> For a musician reading from the screen with both hands busy. A portrait page of sheet music on a
+> landscape device is either too small to read or too big to see at once; cut in half and set side
+> by side it fits whole, at about twice the size.
+>
+> - **`SplitPageImageView` / `SplitPageSliderView`** draw one tall page as two columns. **The cut is
+>   found, not assumed**: it looks for the band of blank paper nearest the halfway point -- the
+>   gutter between two systems, 30 to 45 px on a typical hymn page -- so each column starts at the
+>   top of a system instead of through the middle of a stave. A page with no such band is cut at the
+>   middle, which is no worse than not splitting it.
+>
+> **Two bugs this turned up in `InfinitePagerAdapter`, both of which affect any caller that
+> replaces its slides:**
+>
+> - **`getItemPosition` was never overridden**, so the wrapper inherited `POSITION_UNCHANGED` while
+>   the adapter it wraps answers `POSITION_NONE`. The ViewPager only asks the adapter it was given,
+>   so replacing the slides and calling `notifyDataSetChanged` left the page already on screen
+>   exactly as it was, until you paged away and back.
+> - **`destroyItem` returned early when the adapter was empty** -- which is precisely the state
+>   `removeAllSliders()` leaves it in. The page was never taken off the pager, so every rebuild
+>   leaked its views and the new slide was merely laid on top of the old one. That hid the first
+>   bug, which is why neither was ever noticed.
 
 ---
 

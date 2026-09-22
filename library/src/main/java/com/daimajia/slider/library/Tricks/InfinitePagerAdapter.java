@@ -56,15 +56,29 @@ public class InfinitePagerAdapter extends PagerAdapter {
 
     @Override
     public void destroyItem(ViewGroup container, int position, Object object) {
-        if(getRealCount() == 0){
-            return;
-        }
-        int virtualPosition = position % getRealCount();
+        // The page has to be taken off the pager even when the adapter has just been emptied --
+        // which is exactly what happens when a caller replaces its slides. The old guard returned
+        // here without destroying anything, so the view stayed in the pager for ever: the new
+        // slide was laid on top of the old one, which covered the leak rather than avoiding it.
+        int realCount = getRealCount();
+        int virtualPosition = realCount == 0 ? 0 : position % realCount;
         debug("destroyItem: real position: " + position);
         debug("destroyItem: virtual position: " + virtualPosition);
 
         // only expose virtual position to the inner adapter
         adapter.destroyItem(container, virtualPosition, object);
+    }
+
+    /**
+     * The wrapped adapter answers POSITION_NONE, meaning "rebuild every page", and this wrapper
+     * has to say the same: the ViewPager only ever asks the adapter it was given. Without this
+     * override the wrapper inherited POSITION_UNCHANGED, so replacing the slides and calling
+     * notifyDataSetChanged left the pages already on screen exactly as they were -- the new
+     * slides appeared only after paging away and back.
+     */
+    @Override
+    public int getItemPosition(Object object) {
+        return adapter.getItemPosition(object);
     }
 
     /*

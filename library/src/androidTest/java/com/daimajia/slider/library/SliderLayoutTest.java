@@ -9,8 +9,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.view.MotionEvent;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
@@ -195,6 +197,60 @@ public class SliderLayoutTest {
             scenario.onActivity(activity -> slider.setCurrentPosition(2, false));
             waitFor("the programmatic move to land", () -> slider.getCurrentPosition() == 2);
         }
+    }
+
+    @Test
+    public void replacingTheSlidesReplacesWhatIsOnScreen() {
+        // The pager asks the adapter it was given -- the infinite wrapper -- where each page has
+        // gone. The wrapper used to inherit POSITION_UNCHANGED while the adapter it wraps answers
+        // POSITION_NONE, so swapping the slides left the page already on screen exactly as it
+        // was: a caller that rebuilt its slides saw the old ones until it paged away and back.
+        try (ActivityScenario<SliderTestActivity> scenario =
+                     ActivityScenario.launch(SliderTestActivity.class)) {
+            AtomicReference<SliderLayout> holder = new AtomicReference<>();
+            scenario.onActivity(activity -> {
+                SliderLayout slider = new SliderLayout(activity);
+                slider.stopAutoCycle();
+                // A wide picture to begin with...
+                // Natural: every other scale type decodes the picture at the size of the view,
+                // and the test tells the two slides apart by the size of the picture.
+                slider.addSlider(new DefaultSliderView(activity)
+                        .setScaleType(com.daimajia.slider.library.SliderTypes.BaseSliderView.ScaleType.Natural)
+                        .image(SliderTestSupport.writeTestImage(activity, "slide-wide.png", 80, 20)));
+                holder.set(slider);
+            });
+            SliderLayout slider = holder.get();
+            showInActivity(scenario, slider, 600, 400);
+            ViewPagerEx pager = slider.findViewById(R.id.daimajia_slider_viewpager);
+
+            waitFor("the first picture to be on screen", () -> shownPictureWidths(pager).contains(80));
+
+            // ...replaced by a tall one, without touching the pager itself.
+            scenario.onActivity(activity -> {
+                slider.removeAllSliders();
+                slider.addSlider(new DefaultSliderView(activity)
+                        .setScaleType(com.daimajia.slider.library.SliderTypes.BaseSliderView.ScaleType.Natural)
+                        .image(SliderTestSupport.writeTestImage(activity, "slide-tall.png", 20, 80)));
+            });
+
+            waitFor("the new picture to replace the old one on screen", () -> {
+                java.util.List<Integer> widths = shownPictureWidths(pager);
+                return widths.contains(20) && !widths.contains(80);
+            });
+        }
+    }
+
+    /** The widths of the pictures the pager currently holds, which says which slides are live. */
+    private static java.util.List<Integer> shownPictureWidths(ViewPagerEx pager) {
+        java.util.List<Integer> widths = new java.util.ArrayList<>();
+        for (int i = 0; i < pager.getChildCount(); i++) {
+            View page = pager.getChildAt(i);
+            ImageView image = page.findViewById(R.id.daimajia_slider_image);
+            if (image != null && image.getDrawable() != null) {
+                widths.add(image.getDrawable().getIntrinsicWidth());
+            }
+        }
+        return widths;
     }
 
     @Test
