@@ -52,6 +52,30 @@
 > - `ScaleType.FitWidth` and `ScaleType.FitHeight`, for full-screen pictures on tall screens where
 >   `CenterInside` leaves broad empty bands.
 > - `SliderLayout.isAutoCycling()`.
+>
+> ### 1.4.0 -- tall pages
+>
+> For a portrait page in a landscape view -- sheet music, a scan, a document. Fitted whole it is a
+> narrow column in the middle of a wide screen, unreadable until the reader zooms in by hand every
+> single time.
+>
+> - **`FillWidthFromTop`** (and `ZoomableSliderView.fillWidthFromTop(true)`) opens such a page
+>   zoomed to the full width, showing its top. It is deliberately **inert** for a picture that
+>   already fills the width, so it is safe on a slider carrying pictures of mixed shapes. The zoom
+>   is a starting point, not a cage: pinch, drag and double-tap still work, it re-applies on
+>   rotation, and it never overrides a zoom the reader chose.
+> - **`ScaleType.Natural`** loads the picture at its own size instead of the view's. Every other
+>   scale type decodes to the view, which is right for a picture shown whole and exactly wrong for
+>   one that will be magnified -- zooming then enlarges a view-sized copy, and the detail that was
+>   thrown away never comes back. `ZoomableSliderView` uses it by default.
+>
+> Two things worth knowing if you are debugging around this:
+>
+> - A view that is not attached to a window yet hands out a **throwaway `ViewTreeObserver`**, and
+>   anything registered on it is dropped when the real one arrives. A slide is built detached, so
+>   the pre-draw listener has to be registered on attach.
+> - `PhotoView.setScale(scale)` zooms about the **centre** of the view. Showing the top needs the
+>   focal-point form, `setScale(scale, x, 0, false)`.
 
 ---
 

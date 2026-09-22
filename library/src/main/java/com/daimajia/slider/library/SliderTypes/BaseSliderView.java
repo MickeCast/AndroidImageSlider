@@ -66,9 +66,16 @@ public abstract class BaseSliderView {
      * overflow. {@code FitWidth} and {@code FitHeight} are new -- they match one axis exactly and
      * let the other overflow, which is what a full-screen slide wants on a tall phone, where
      * {@code CenterInside} leaves broad empty bands.
+     * <p>
+     * {@code Natural} is also new, and is what a slide the reader can zoom into wants: every other
+     * option decodes the picture at the size of the view, which is the right economy for a picture
+     * shown whole and exactly wrong for one that will be magnified -- zooming then enlarges a
+     * view-sized copy and the detail that was thrown away never comes back. Note that plain
+     * {@code Fit} resizes to the view's bounds with no regard for the picture's shape, so a
+     * portrait page handed to it comes back stretched.
      */
     public enum ScaleType{
-        CenterCrop, CenterInside, Fit, FitCenterCrop, FitWidth, FitHeight
+        CenterCrop, CenterInside, Fit, FitCenterCrop, FitWidth, FitHeight, Natural
     }
 
     protected BaseSliderView(Context context) {
@@ -260,6 +267,9 @@ public abstract class BaseSliderView {
                 // if it is ever handed a differently shaped drawable.
                 rq.fit().centerCrop();
                 targetImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                break;
+            case Natural:
+                // Nothing: the picture is decoded as it is, so a zoom shows real detail.
                 break;
             case FitWidth:
             case FitHeight:

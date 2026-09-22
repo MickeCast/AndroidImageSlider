@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 
 import com.daimajia.slider.library.R;
+import com.daimajia.slider.library.Zoom.FillWidthFromTop;
 import com.github.chrisbanes.photoview.PhotoView;
 
 /**
@@ -28,9 +29,23 @@ import com.github.chrisbanes.photoview.PhotoView;
 public class ZoomableSliderView extends BaseSliderView {
 
     private float mMaximumScale = 4.0f;
+    private boolean mFillWidthFromTop;
+
+    /**
+     * Where a picture taller than the view starts: fitted whole (the default), or zoomed to the
+     * view's width showing its top. See {@link FillWidthFromTop} -- it is inert for a picture that
+     * already fills the width, so it is safe on a slider of mixed shapes.
+     */
+    public ZoomableSliderView fillWidthFromTop(boolean fill) {
+        mFillWidthFromTop = fill;
+        return this;
+    }
 
     public ZoomableSliderView(Context context) {
         super(context);
+        // A zoomable slide keeps the picture at its own size by default: the other scale types
+        // decode it at the size of the view, and zooming into that only magnifies what is left.
+        setScaleType(ScaleType.Natural);
     }
 
     /**
@@ -48,6 +63,9 @@ public class ZoomableSliderView extends BaseSliderView {
         PhotoView target = v.findViewById(R.id.daimajia_slider_image);
         target.setMaximumScale(mMaximumScale);
         bindEventAndShow(v, target);
+        if (mFillWidthFromTop) {
+            FillWidthFromTop.attach(target);
+        }
         return v;
     }
 }
