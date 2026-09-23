@@ -3,6 +3,7 @@ package com.daimajia.slider.library.Pages;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
@@ -46,6 +47,13 @@ public class SplitPageImageView extends ImageView {
 
     private Bitmap measuredBitmap;
     private int splitRow = -1;
+
+    /**
+     * Drawing a scaled bitmap with a null paint samples the nearest pixel: every column came out
+     * blocky, stretched or shrunk, whatever the quality of the picture behind it. The ImageView
+     * path this replaces smooths by default, which is why the spread never showed it.
+     */
+    private final Paint pagePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
 
     private final Rect source = new Rect();
     private final RectF destination = new RectF();
@@ -103,6 +111,9 @@ public class SplitPageImageView extends ImageView {
         if (page != measuredBitmap) {
             splitRow = findSplitRow(page);
             measuredBitmap = page;
+            // A page bigger than its column is shrunk; mipmaps keep thin stave lines from
+            // flickering in and out the way plain bilinear sampling lets them.
+            page.setHasMipMap(true);
         }
 
         int columnWidth = (viewWidth - gutterPx) / 2;
@@ -127,7 +138,7 @@ public class SplitPageImageView extends ImageView {
 
         source.set(0, top, page.getWidth(), bottom);
         destination.set(left, topOffset, left + drawnWidth, topOffset + drawnHeight);
-        canvas.drawBitmap(page, source, destination, null);
+        canvas.drawBitmap(page, source, destination, pagePaint);
     }
 
     private static Bitmap bitmapOf(Drawable drawable) {

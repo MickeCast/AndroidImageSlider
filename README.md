@@ -10,7 +10,7 @@
 > repositories { maven { url 'https://jitpack.io' } }
 >
 > dependencies {
->     implementation 'com.github.MickeCast:AndroidImageSlider:1.3.0'
+>     implementation 'com.github.MickeCast:AndroidImageSlider:1.7.0'
 > }
 > ```
 >
@@ -109,6 +109,15 @@
 >   leaked its views and the new slide was merely laid on top of the old one. That hid the first
 >   bug, which is why neither was ever noticed.
 
+>
+> ### 1.7.0 -- split pages drawn smoothly
+>
+> - **`SplitPageImageView` drew its two columns with a null paint**, which samples the nearest
+>   pixel: whenever a column was stretched or shrunk -- which is always -- the page came out
+>   blocky, however good the picture behind it. It draws with bitmap filtering now, and asks for
+>   mipmaps, so a page larger than its column (a 2x "enhanced" scan, say) keeps its thin stave
+>   lines instead of letting them flicker in and out. `SpreadSliderView` never had the problem: it
+>   draws through ImageViews, which filter by default.
 ---
 
 [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/daimajia/AndroidImageSlider?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
