@@ -89,7 +89,15 @@
 >   top of a system instead of through the middle of a stave. A page with no such band is cut at the
 >   middle, which is no worse than not splitting it.
 >
-> **Two bugs this turned up in `InfinitePagerAdapter`, both of which affect any caller that
+> ### 1.6.0 -- two pages side by side
+>
+> - **`SpreadSliderView`** shows two whole pages at once, like an open book, for a screen wide and
+>   tall enough to hold both at a readable size. It is the companion to `SplitPageSliderView`: a
+>   split page draws the music larger, a spread removes the page turn altogether, and which is
+>   worth more depends on the screen. On a 10-inch tablet a two-page piece then needs no turn at
+>   all.
+>
+> **Two bugs 1.5.0 turned up in `InfinitePagerAdapter`, both of which affect any caller that
 > replaces its slides:**
 >
 > - **`getItemPosition` was never overridden**, so the wrapper inherited `POSITION_UNCHANGED` while
